@@ -7,9 +7,9 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 // Error reverts
-error RobotNft__NotEnoughETH();
-error RobotNft__DoesNotExist();
-error RobotNft__AlreadyMinted();
+error CatNft__NotEnoughETH();
+error CatNft__DoesNotExist();
+error CatNft__AlreadyMinted();
 
 contract CatNft is ERC721{
     
@@ -38,13 +38,13 @@ contract CatNft is ERC721{
 
     function mintNFT(uint256 tokenId) payable external{
         if (msg.value < i_mintFee){
-            revert RobotNft__NotEnoughETH();
+            revert CatNft__NotEnoughETH();
         }
         if (tokenId > 7){
-            revert RobotNft__DoesNotExist();
+            revert CatNft__DoesNotExist();
         }
         if(minted[tokenId]==true){
-            revert RobotNft__AlreadyMinted();
+            revert CatNft__AlreadyMinted();
         }
 
         _safeMint(msg.sender,tokenId);
