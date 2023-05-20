@@ -56,6 +56,8 @@ const developmentChains = ["hardhat", "localhost"]
 const VERIFICATION_BLOCK_CONFIRMATIONS = 6
 const frontEndContractsFile = "../nextjs-smartcontract-lottery-fcc/constants/contractAddresses.json"
 const frontEndAbiFile = "../nextjs-smartcontract-lottery-fcc/constants/abi.json"
+const RobotNftMintPrice = "100000000000000000";
+const CatNftMintPrice = "150000000000000000";
 
 module.exports = {
     networkConfig,
@@ -64,5 +66,7 @@ module.exports = {
     frontEndContractsFile,
     frontEndAbiFile,
     INITIAL_PRICE,
-    DECIMALS
+    DECIMALS,
+    RobotNftMintPrice,
+    CatNftMintPrice
 }
