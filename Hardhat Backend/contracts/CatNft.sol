@@ -11,7 +11,7 @@ error RobotNft__NotEnoughETH();
 error RobotNft__DoesNotExist();
 error RobotNft__AlreadyMinted();
 
-contract RobotNft is ERC721{
+contract CatNft is ERC721{
     
     // Immutable variables
     uint256 private immutable i_mintFee;
@@ -32,7 +32,7 @@ contract RobotNft is ERC721{
     // TokenID => Boolean (Minted or not)
     mapping(uint256 => bool) minted;
 
-    constructor(uint256 _mintFee) ERC721("Robot","RBT"){
+    constructor(uint256 _mintFee) ERC721("CatNft","CNT"){
         i_mintFee = _mintFee;
     }
 
