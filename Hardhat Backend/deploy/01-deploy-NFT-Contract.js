@@ -8,7 +8,7 @@ module.exports = async  ({getNamedAccounts,deployments})=>{
     const {deployer} = await getNamedAccounts();
     const chainId = network.config.chainId;
     const waitBlockConfirmations = (networkConfig[chainId]).waitConfirmations;
-    console.log("ethers.utils.parseEther(1).toString()")
+
     const RobotNftContract = await deploy ("RobotNft",{
         from: deployer,
         args: [RobotNftMintPrice],
@@ -25,3 +25,5 @@ module.exports = async  ({getNamedAccounts,deployments})=>{
 
 
 }
+
+module.exports.tags = ["all", "nft"]

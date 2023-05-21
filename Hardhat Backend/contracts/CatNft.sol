@@ -56,4 +56,8 @@ contract CatNft is ERC721{
         return minted[tokenId];
     }
 
+    function getTokenURI(uint256 tokenId)public view returns(string memory){
+        return tokenURIs[tokenId];
+    }
+
 }

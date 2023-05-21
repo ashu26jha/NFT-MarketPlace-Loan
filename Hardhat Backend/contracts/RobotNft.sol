@@ -30,7 +30,7 @@ contract RobotNft is ERC721{
     
     // Mapping of minted NFTs
     // TokenID => Boolean (Minted or not)
-    mapping(uint256 => bool) minted;
+    mapping(uint256 => uint8) minted;
 
     constructor(uint256 _mintFee) ERC721("Robot","RBT"){
         i_mintFee = _mintFee;
@@ -43,17 +43,21 @@ contract RobotNft is ERC721{
         if (tokenId > 7){
             revert RobotNft__DoesNotExist();
         }
-        if(minted[tokenId]==true){
+        if(minted[tokenId]==1){
             revert RobotNft__AlreadyMinted();
         }
 
         _safeMint(msg.sender,tokenId);
-        minted[tokenId] = true;
+        minted[tokenId] = 1;
     }
 
     // MintStatus
-    function mintStatus(uint256 tokenId) public view returns(bool){
+    function mintStatus(uint256 tokenId) public view returns(uint8){
         return minted[tokenId];
+    }
+
+    function getTokenURI(uint256 tokenId)public view returns(string memory){
+        return tokenURIs[tokenId];
     }
 
 }
