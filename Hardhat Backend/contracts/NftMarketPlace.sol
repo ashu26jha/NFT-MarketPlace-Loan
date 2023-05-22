@@ -16,7 +16,7 @@ error PriceMustBeAboveZero();
 error NftMarketPlace__BadIndex();
 error NftMarketPlace__BorrowerWantsMore();
 
-contract NftMarketPlace is IERC721Receiver{
+contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
     
     struct Listing{
         uint256 price;
@@ -33,6 +33,7 @@ contract NftMarketPlace is IERC721Receiver{
         uint256 startTime;
         uint256 TotalAMT;
         bool paid;
+        bool expired;
     }
 
     // Events
@@ -80,6 +81,12 @@ contract NftMarketPlace is IERC721Receiver{
         uint256 indexed tokenId
     );
 
+    event NFTconfiscated(
+        uint256 indexed index,
+        address indexed nftAddress,
+        uint256 indexed tokenId
+    );
+
     mapping(address => mapping(uint256 => Listing)) private s_listings;
     mapping(address => uint256) private s_proceeds;
     mapping(address => LoanList) private s_loanList;
@@ -89,7 +96,9 @@ contract NftMarketPlace is IERC721Receiver{
     LoanList [] s_LoanListing;
 
     modifier notListed(address nftAddress, uint256 tokenId) {
+        
         Listing memory listing = s_listings[nftAddress][tokenId];
+        
         if (listing.price > 0) {
             revert AlreadyListed(nftAddress, tokenId);
         }
@@ -97,7 +106,9 @@ contract NftMarketPlace is IERC721Receiver{
     }
 
     modifier isListed(address nftAddress, uint256 tokenId) {
+        
         Listing memory listing = s_listings[nftAddress][tokenId];
+        
         if (listing.price <= 0) {
             revert NotListed(nftAddress, tokenId);
         }
@@ -105,8 +116,10 @@ contract NftMarketPlace is IERC721Receiver{
     }
 
     modifier isOwner(address nftAddress, uint256 tokenId, address spender) {
+        
         IERC721 nft = IERC721(nftAddress);
         address owner = nft.ownerOf(tokenId);
+        
         if (spender != owner) {
             revert NotOwner();
         }
@@ -114,14 +127,18 @@ contract NftMarketPlace is IERC721Receiver{
     }
 
     function listItem(address nftAddress, uint256 tokenId, uint256 price) external notListed(nftAddress, tokenId) isOwner(nftAddress, tokenId, msg.sender){
+        
         if (price <= 0) {
             revert PriceMustBeAboveZero();
         }
         IERC721 nft = IERC721(nftAddress);
+        
         if (nft.getApproved(tokenId) != address(this)) {
             revert NotApprovedForMarketplace();
         }
+        
         s_listings[nftAddress][tokenId] = Listing(price, msg.sender);
+        
         emit ItemListed(msg.sender, nftAddress, tokenId, price);
     }
 
@@ -134,12 +151,15 @@ contract NftMarketPlace is IERC721Receiver{
     function buyItem(address nftAddress, uint256 tokenId) external payable isListed (nftAddress, tokenId){
 
         Listing memory listedItem = s_listings[nftAddress][tokenId];
+        
         if (msg.value < listedItem.price) {
             revert PriceNotMet(nftAddress, tokenId, listedItem.price);
         }
+        
         s_proceeds[listedItem.owner] += msg.value;
         delete (s_listings[nftAddress][tokenId]);
         IERC721(nftAddress).safeTransferFrom(listedItem.owner, msg.sender, tokenId);
+        
         emit ItemBought(msg.sender, nftAddress, tokenId, listedItem.price);
     }
 
@@ -153,12 +173,16 @@ contract NftMarketPlace is IERC721Receiver{
     }
 
     function withdrawProceeds() external {
+        
         uint256 proceeds = s_proceeds[msg.sender];
+        
         if (proceeds <= 0) {
             revert NoProceeds();
         }
+        
         s_proceeds[msg.sender] = 0;
         (bool success, ) = payable(msg.sender).call{value: proceeds}("");
+        
         require(success, "Transfer failed");
     }
 
@@ -176,9 +200,11 @@ contract NftMarketPlace is IERC721Receiver{
         return IERC721Receiver.onERC721Received.selector;
     }
     function getLoanDetails(uint256 index) public view returns (LoanList memory) {
+        
         if(index<s_LoanListing.length){
             revert NftMarketPlace__BadIndex();
         }
+        
         return s_LoanListing[index];
     }
 
@@ -192,6 +218,7 @@ contract NftMarketPlace is IERC721Receiver{
         createListing.paid = false;
 
         s_LoanListing.push(createListing);
+        
         emit LoanListRequested(s_LoanListing.length - 1,tokenId,nftAddress,msg.sender,duration,amtNeeded);
     }
 
@@ -203,6 +230,7 @@ contract NftMarketPlace is IERC721Receiver{
         
         s_loanBalances[s_LoanListing[m_index].borrower] = s_LoanListing[m_index].requestAmt;
         s_LoanListing[m_index].TotalAMT = amt;
+        
         emit lenderDealSubmitted(m_index,amt);
     
     }
@@ -226,11 +254,14 @@ contract NftMarketPlace is IERC721Receiver{
         if(msg.value == 0){
             revert ("Send ETH");
         }
+        
         s_loanBalances[msg.sender] += msg.value;
         
         if(s_LoanListing[index].TotalAMT <= s_loanBalances[msg.sender]){
+            
             s_LoanListing[index].paid = true;
-            s_proceeds[s_LoanListing[index].lender]=s_loanBalances[msg.sender]  ;
+            s_proceeds[s_LoanListing[index].lender]=s_loanBalances[msg.sender];
+
             // Send back the nft to borrower
             IERC721(s_LoanListing[index].nftAddress).safeTransferFrom(address(this),s_LoanListing[index].borrower, s_LoanListing[index].tokenId);
 
@@ -241,5 +272,60 @@ contract NftMarketPlace is IERC721Receiver{
 
     }
 
+    function checkUpkeep( bytes calldata  checkData  ) external view override returns (bool upkeepNeeded, bytes memory  performData){
+        
+        (uint256 index) = abi.decode(checkData,(uint256));
+        uint256 counter = 0 ;
+
+        for( uint256 i = 0 ; index < s_LoanListing.length ; i++){
+            
+            LoanList memory temp = s_LoanListing[i];
+            uint256 currentTime = block.timestamp;
+
+            if(currentTime - temp.startTime > temp.duration && (temp.paid == false) ){
+                counter ++ ;
+            }
+        
+        }
+
+        uint256[] memory indexes = new uint256[](counter);
+        uint256 j = 0 ;
+
+        for( uint256 i = 0 ; i < s_LoanListing.length ; i++){
+            
+            LoanList memory temp = s_LoanListing[index];
+            uint256 currentTime = block.timestamp;
+            
+            if(currentTime - temp.startTime > temp.duration && (temp.paid == false) ){
+                indexes[j]=i;
+                j+=1;
+            }
+        
+        }
+
+        upkeepNeeded = (counter!=0);
+        performData = abi.encode(indexes);
+        return (upkeepNeeded, performData);
+
+        // OR WE CAN WRITE AS 
+        // ********************************************
+        // * return (counter!=0,abi.encode(indexes)); *
+        // ********************************************
+        // ONE LINER NO NEED OF IF STATEMENTS
+    }
+
+    function performUpkeep(bytes calldata  performData ) external override {
+        (uint256[] memory defaulter) = abi.decode(performData,(uint256[]));
+
+        for(uint256 i = 0 ; i < defaulter.length; i++){
+            // Defaulter of i has the index of that loan
+            IERC721(s_LoanListing[defaulter[i]].nftAddress).safeTransferFrom(address(this),s_LoanListing[defaulter[i]].lender,s_LoanListing[defaulter[i]].tokenId);
+            
+            s_proceeds[s_LoanListing[defaulter[i]].lender] = s_loanBalances[s_LoanListing[defaulter[i]].borrower];
+            s_loanBalances[s_LoanListing[defaulter[i]].borrower] = 0;
+            s_LoanListing[defaulter[i]].expired = true;
+        }
+
+    }
 
 }
