@@ -2,8 +2,8 @@
 pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 
 error PriceNotMet(address nftAddress, uint256 tokenId, uint256 price);
 error ItemNotForSale(address nftAddress, uint256 tokenId);
@@ -32,6 +32,7 @@ contract NftMarketPlace is IERC721Receiver{
         uint256 duration;
         uint256 startTime;
         uint256 TotalAMT;
+        bool paid;
     }
 
     // Events
@@ -71,6 +72,12 @@ contract NftMarketPlace is IERC721Receiver{
 
     event LoanSanctioned(
         uint256 indexed index
+    );
+
+    event LoanPaid(
+        uint256 indexed index,
+        address indexed nftAddress,
+        uint256 indexed tokenId
     );
 
     mapping(address => mapping(uint256 => Listing)) private s_listings;
@@ -182,6 +189,7 @@ contract NftMarketPlace is IERC721Receiver{
         createListing.requestAmt = amtNeeded;
         createListing.duration = duration;
         createListing.nftAddress = nftAddress;
+        createListing.paid = false;
 
         s_LoanListing.push(createListing);
         emit LoanListRequested(s_LoanListing.length - 1,tokenId,nftAddress,msg.sender,duration,amtNeeded);
@@ -211,6 +219,26 @@ contract NftMarketPlace is IERC721Receiver{
 
         s_LoanListing[m_index].startTime = block.timestamp;
         emit LoanSanctioned(m_index);
+    }
+
+
+    function payback(uint256 index)public payable{
+        if(msg.value == 0){
+            revert ("Send ETH");
+        }
+        s_loanBalances[msg.sender] += msg.value;
+        
+        if(s_LoanListing[index].TotalAMT <= s_loanBalances[msg.sender]){
+            s_LoanListing[index].paid = true;
+            s_proceeds[s_LoanListing[index].lender]=s_loanBalances[msg.sender]  ;
+            // Send back the nft to borrower
+            IERC721(s_LoanListing[index].nftAddress).safeTransferFrom(address(this),s_LoanListing[index].borrower, s_LoanListing[index].tokenId);
+
+            emit LoanPaid(index, s_LoanListing[index].nftAddress, s_LoanListing[index].tokenId);
+
+            // Optimisation idea: If first m loans are paid start checkup from m.
+        }
+
     }
 
 

@@ -19,3 +19,5 @@
 - Before the transfer of funds NFT marketplace would take ownership of the NFT
 - If borrower pays on time, NFT is returned to the customer, lender can withdraw the amount
 - If borrower fails to pay back in time, ownership of NFT is transfered to the lender
+
+### Optimisation idea: If first m loans are paid start checkup from m.
