@@ -35,7 +35,7 @@ contract RobotNft is ERC721{
     constructor(uint256 _mintFee) ERC721("Robot","RBT"){
         i_mintFee = _mintFee;
     }
-
+    
     function mintNFT(uint256 tokenId) payable external{
         if (msg.value < i_mintFee){
             revert RobotNft__NotEnoughETH();

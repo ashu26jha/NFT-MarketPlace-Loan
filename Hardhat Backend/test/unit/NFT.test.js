@@ -5,12 +5,13 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
 //writing the test code from here..  ethers.utils.parseEther(1).toString()
 
 !developmentChains.includes(network.name) ? describe.skip : describe("Basic NFT Unit Tests", function () {
-    let RobotNftContract, CatNftContract,accounts, account1, account2, account3;
+    let RobotNftContract, CatNftContract, NftMarketPlaceContract,accounts, account1, account2, account3;
 
     beforeEach(async function(){
         await deployments.fixture("all");
         RobotNftContract = await ethers.getContract("RobotNft");
         CatNftContract = await ethers.getContract("CatNft");
+        NftMarketPlaceContract = await ethers.getContract("NftMarketPlace")
         accounts = await ethers.getSigners();
         account1 = accounts[0];
         account2 = accounts[1];
@@ -38,7 +39,7 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
             // Checks the mint status
             const mintStatus = await RobotNftContract.mintStatus(2);
             assert.equal(1,mintStatus);
-
+            
             const tokenURI1 = await RobotNftContract.getTokenURI(tokenID)
             assert.equal("bafkreihrq3flvy2gh6rzxzn43gxmtvir2iuhqgszfhtg2g2top2iid543i",tokenURI1);
         })
@@ -70,5 +71,29 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
         })
 
     });
+
+    // MARKETPLACE TESTS
+
+    describe("NFT Marketplace tests", async function (){
+
+        it("Only allows owner of NFT to list it", async function(){
+            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.approve(NftMarketPlaceContract.address,2);
+            await expect (NftMarketPlaceContract.connect(account2).ListLoan(RobotNftContract.address,2,2,2)).to.be.revertedWith("NotOwner()")
+        });
+
+        it("Checks for event emiited after listing", async function (){
+            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.approve(NftMarketPlaceContract.address,2);
+            await NftMarketPlaceContract.ListLoan(RobotNftContract.address,2,2,2);
+            const getLoanDetails = await NftMarketPlaceContract.getLoanDetails(0);
+            assert.equal(getLoanDetails.borrower,account1.address);
+            assert.equal(getLoanDetails.tokenId.toString(),"2");
+            console.log(getLoanDetails);
+            // assert.equal(getLoanDetails[0])
+        })
+        
+    })
+
 
 })

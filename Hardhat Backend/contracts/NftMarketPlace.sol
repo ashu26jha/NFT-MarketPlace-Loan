@@ -201,7 +201,7 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
     }
     function getLoanDetails(uint256 index) public view returns (LoanList memory) {
         
-        if(index<s_LoanListing.length){
+        if(index>s_LoanListing.length){
             revert NftMarketPlace__BadIndex();
         }
         
@@ -215,6 +215,7 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
         createListing.requestAmt = amtNeeded;
         createListing.duration = duration;
         createListing.nftAddress = nftAddress;
+        createListing.tokenId = tokenId;
         createListing.paid = false;
 
         s_LoanListing.push(createListing);
