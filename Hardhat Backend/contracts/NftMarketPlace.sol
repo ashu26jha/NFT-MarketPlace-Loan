@@ -249,6 +249,7 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
         emit LoanSanctioned(m_index);
     }
 
+// A bug here fix it. Use timestamp and expired
 
     function payback(uint256 index)public payable{
         if(msg.value == 0){

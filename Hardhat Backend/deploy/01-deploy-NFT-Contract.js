@@ -14,14 +14,21 @@ module.exports = async  ({getNamedAccounts,deployments})=>{
         args: [RobotNftMintPrice],
         log: true,
         waitConfirmations: waitBlockConfirmations | 1 ,
-    })
+    });
 
     const CatNftContract = await deploy ("CatNft",{
         from: deployer,
         args: [CatNftMintPrice],
         log: true,
         waitConfirmations: waitBlockConfirmations | 1 ,
-    })
+    });
+
+    const NftMarketPlace = await deploy ("NftMarketPlace",{
+        from: deployer,
+        args: [],
+        log: true,
+        waitConfirmations: waitBlockConfirmations | 1 ,
+    });
 
 
 }
