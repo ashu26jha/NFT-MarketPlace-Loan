@@ -92,6 +92,8 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
     mapping(address => LoanList) private s_loanList;
     mapping(address => address) private s_lenderToBorrower; 
     mapping(address => uint256) private s_loanBalances;
+    mapping(uint256 => mapping(address=>uint256)) private s_offerings;
+
 
     LoanList [] s_LoanListing;
 
@@ -223,11 +225,17 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
         emit LoanListRequested(s_LoanListing.length - 1,tokenId,nftAddress,msg.sender,duration,amtNeeded);
     }
 
+    function getOffer(uint256 index, address proposer) public view returns (uint256){
+        return s_offerings[index][proposer];
+    }
+
     function lenderDeal(uint256 m_index, uint256 amt) public payable{
     
         if(msg.value < s_LoanListing[m_index].requestAmt){
             revert NftMarketPlace__BorrowerWantsMore();
         }
+
+        s_offerings[m_index][msg.sender] = amt;
         
         s_loanBalances[s_LoanListing[m_index].borrower] = s_LoanListing[m_index].requestAmt;
         s_LoanListing[m_index].TotalAMT = amt;
@@ -236,10 +244,14 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
     
     }
 
-    function finaliseDeal(uint256 m_index) public {
+    function finaliseDeal(uint256 m_index, address lender) public {
+        
+        require(msg.sender==s_LoanListing[m_index].borrower,"Not borrower");
         
         uint256 tempamt = s_LoanListing[m_index].requestAmt;
         s_loanBalances[s_LoanListing[m_index].borrower] = 0; // This will prevent reentrant attack
+        s_LoanListing[m_index].lender = lender;
+        s_LoanListing[m_index].TotalAMT = s_offerings[m_index][lender];
 
         IERC721(s_LoanListing[m_index].nftAddress).safeTransferFrom(s_LoanListing[m_index].borrower, address(this), s_LoanListing[m_index].tokenId);
 
@@ -256,15 +268,24 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
         if(msg.value == 0){
             revert ("Send ETH");
         }
+
+        if(msg.sender!=s_LoanListing[index].borrower){
+            revert("NOT YOUR LOAN");
+        }
+
+        if(block.timestamp - s_LoanListing[index].startTime > s_LoanListing[index].duration){
+            revert("Time is up");
+        }
         
         s_loanBalances[msg.sender] += msg.value;
         
         if(s_LoanListing[index].TotalAMT <= s_loanBalances[msg.sender]){
             
             s_LoanListing[index].paid = true;
-            s_proceeds[s_LoanListing[index].lender]=s_loanBalances[msg.sender];
+            s_proceeds[s_LoanListing[index].lender]+=s_loanBalances[msg.sender];
 
             // Send back the nft to borrower
+            // IERC721(s_LoanListing[index].nftAddress).approve(s_LoanListing[index].borrower,s_LoanListing[index].tokenId);
             IERC721(s_LoanListing[index].nftAddress).safeTransferFrom(address(this),s_LoanListing[index].borrower, s_LoanListing[index].tokenId);
 
             emit LoanPaid(index, s_LoanListing[index].nftAddress, s_LoanListing[index].tokenId);
@@ -298,7 +319,7 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
             LoanList memory temp = s_LoanListing[index];
             uint256 currentTime = block.timestamp;
             
-            if(currentTime - temp.startTime > temp.duration && (temp.paid == false) ){
+            if(currentTime - temp.startTime > temp.duration && (temp.paid == false) && (temp.expired==false)){
                 indexes[j]=i;
                 j+=1;
             }
@@ -323,10 +344,21 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
             // Defaulter of i has the index of that loan
             IERC721(s_LoanListing[defaulter[i]].nftAddress).safeTransferFrom(address(this),s_LoanListing[defaulter[i]].lender,s_LoanListing[defaulter[i]].tokenId);
             
-            s_proceeds[s_LoanListing[defaulter[i]].lender] = s_loanBalances[s_LoanListing[defaulter[i]].borrower];
+            s_proceeds[s_LoanListing[defaulter[i]].lender] += s_loanBalances[s_LoanListing[defaulter[i]].borrower];
             s_loanBalances[s_LoanListing[defaulter[i]].borrower] = 0;
             s_LoanListing[defaulter[i]].expired = true;
         }
+
+    }
+
+    function manualClaim(uint256 index)public{
+        if(s_LoanListing[index].lender!=msg.sender){
+            revert("NOT ALLOWED");
+        }
+        if(block.timestamp - s_LoanListing[index].startTime < s_LoanListing[index].duration){
+            revert("Can't claim now");
+        }
+        IERC721(s_LoanListing[index].nftAddress).safeTransferFrom(address(this),s_LoanListing[index].lender, s_LoanListing[index].tokenId);
 
     }
 

@@ -72,16 +72,16 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
 
     });
 
-    // MARKETPLACE TESTS
+    // MARKETPLACE LOAN TESTS
 
-    describe("NFT Marketplace tests", async function (){
+    describe("NFT Marketplace loan tests", async function (){
 
         it("Only allows owner of NFT to list it", async function(){
             await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
             await RobotNftContract.approve(NftMarketPlaceContract.address,2);
             await expect (NftMarketPlaceContract.connect(account2).ListLoan(RobotNftContract.address,2,2,2)).to.be.revertedWith("NotOwner()")
         });
-
+        
         it("Checks for event emiited after listing", async function (){
             await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
             await RobotNftContract.approve(NftMarketPlaceContract.address,2);
@@ -89,9 +89,70 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
             const getLoanDetails = await NftMarketPlaceContract.getLoanDetails(0);
             assert.equal(getLoanDetails.borrower,account1.address);
             assert.equal(getLoanDetails.tokenId.toString(),"2");
-            console.log(getLoanDetails);
             // assert.equal(getLoanDetails[0])
+        });
+
+        // Add a test for Lender Deal
+
+        it("Reverts if lender sends less amount", async function (){
+            // Borrower listing:
+            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.approve(NftMarketPlaceContract.address,2);
+            await NftMarketPlaceContract.ListLoan(RobotNftContract.address,2,2,2);
+            // Trying to send less value than needed
+            await expect (NftMarketPlaceContract.connect(account2).lenderDeal(0,3,{value: 1})).to.be.revertedWith("NftMarketPlace__BorrowerWantsMore()")
+        });
+
+        it("Finalise the deal",async function (){
+            // Needs to check whether owner of the nft is the contract or not
+            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.approve(NftMarketPlaceContract.address,2);
+            await NftMarketPlaceContract.ListLoan(RobotNftContract.address,2,2,2);
+            await NftMarketPlaceContract.connect(account2).lenderDeal(0,3,{value: 2})
+            // Any other account cannot finalise the deal
+            await expect (NftMarketPlaceContract.connect(account2).finaliseDeal(0,account2.address)).to.be.revertedWith("Not borrower");
+            await NftMarketPlaceContract.connect(account1).finaliseDeal(0,account2.address);
+            const newNftOwner = await RobotNftContract.ownerOf(2);
+            //Checks whether marketplace is owner of NFT or not
+            assert.equal(newNftOwner,NftMarketPlaceContract.address);
+        });
+
+        it("Repayment in three installments", async function(){
+            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.approve(NftMarketPlaceContract.address,2);
+            await NftMarketPlaceContract.ListLoan(RobotNftContract.address,2,2,"20000000000000000000");
+            await NftMarketPlaceContract.connect(account2).lenderDeal(0,3,{value: 2});
+            await NftMarketPlaceContract.connect(account1).finaliseDeal(0,account2.address);
+            // Paying back
+            await NftMarketPlaceContract.connect(account1).payback(0,{value: 1});
+            await NftMarketPlaceContract.connect(account1).payback(0,{value: 1});
+            await NftMarketPlaceContract.connect(account1).payback(0,{value: 1});
+            // await NftMarketPlaceContract.connect(account1).payback(0,{value: 1});
+            // Checking if NFT goes back to borrower
+            assert.equal(await RobotNftContract.ownerOf(2),account1.address);
+        });
+
+        it("Fails to repay in time and NFT is confiscated", async function(){
+            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.approve(NftMarketPlaceContract.address,2);
+            await NftMarketPlaceContract.ListLoan(RobotNftContract.address,2,2,"2");
+            await NftMarketPlaceContract.connect(account2).lenderDeal(0,3,{value: 2});
+            await NftMarketPlaceContract.connect(account1).finaliseDeal(0,account2.address);
+
+            // Tries to steal the NFT
+
+            await expect  (NftMarketPlaceContract.connect(account2).manualClaim(0)).to.be.revertedWith("Can't claim now")
+
+            await NftMarketPlaceContract.connect(account1).payback(0,{value: 1});
+            await ethers.provider.send('evm_increaseTime', [200]);
+            await expect(NftMarketPlaceContract.connect(account1).payback(0,{value: 1})).to.be.revertedWith("Time is up");
+            await expect(NftMarketPlaceContract.connect(account3).manualClaim(0)).to.be.revertedWith("NOT ALLOWED");
+            await NftMarketPlaceContract.connect(account2).manualClaim(0)
+            assert.equal(await RobotNftContract.ownerOf(2),account2.address);
         })
+
+
+        // Add a test for payback
         
     })
 
