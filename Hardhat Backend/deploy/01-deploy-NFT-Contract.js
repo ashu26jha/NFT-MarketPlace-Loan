@@ -15,7 +15,7 @@ module.exports = async  ({getNamedAccounts,deployments})=>{
         from: deployer,
         args: [],
         log: true,
-        waitConfirmations: 5,
+        waitConfirmations: 1,
     });
 
     const RobotNftContract = await deploy ("RobotNft",{

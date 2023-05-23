@@ -144,7 +144,7 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
             await expect  (NftMarketPlaceContract.connect(account2).manualClaim(0)).to.be.revertedWith("Can't claim now")
 
             await NftMarketPlaceContract.connect(account1).payback(0,{value: 1});
-            await ethers.provider.send('evm_increaseTime', [200]);
+            await ethers.provider.send('evm_increaseTime', [2]);
             await expect(NftMarketPlaceContract.connect(account1).payback(0,{value: 1})).to.be.revertedWith("Time is up");
             await expect(NftMarketPlaceContract.connect(account3).manualClaim(0)).to.be.revertedWith("NOT ALLOWED");
             await NftMarketPlaceContract.connect(account2).manualClaim(0)

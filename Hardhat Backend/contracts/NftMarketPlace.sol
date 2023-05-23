@@ -68,7 +68,8 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
 
     event lenderDealSubmitted(
         uint256 indexed index,
-        uint256 indexed totalamt
+        uint256 indexed totalamt,
+        address indexed lender
     );
 
     event LoanSanctioned(
@@ -235,21 +236,19 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
             revert NftMarketPlace__BorrowerWantsMore();
         }
 
-        s_offerings[m_index][msg.sender] = amt;
-        
-        s_loanBalances[s_LoanListing[m_index].borrower] = s_LoanListing[m_index].requestAmt;
-        s_LoanListing[m_index].TotalAMT = amt;
-        
-        emit lenderDealSubmitted(m_index,amt);
-    
+        s_offerings[m_index][msg.sender] = amt;        
+        emit lenderDealSubmitted(m_index,amt,msg.sender);
     }
 
     function finaliseDeal(uint256 m_index, address lender) public {
-        
+
         require(msg.sender==s_LoanListing[m_index].borrower,"Not borrower");
+
+        s_loanBalances[s_LoanListing[m_index].borrower] = s_LoanListing[m_index].requestAmt;
         
         uint256 tempamt = s_LoanListing[m_index].requestAmt;
         s_loanBalances[s_LoanListing[m_index].borrower] = 0; // This will prevent reentrant attack
+        
         s_LoanListing[m_index].lender = lender;
         s_LoanListing[m_index].TotalAMT = s_offerings[m_index][lender];
 
@@ -285,12 +284,10 @@ contract NftMarketPlace is IERC721Receiver, AutomationCompatibleInterface{
             s_proceeds[s_LoanListing[index].lender]+=s_loanBalances[msg.sender];
 
             // Send back the nft to borrower
-            // IERC721(s_LoanListing[index].nftAddress).approve(s_LoanListing[index].borrower,s_LoanListing[index].tokenId);
             IERC721(s_LoanListing[index].nftAddress).safeTransferFrom(address(this),s_LoanListing[index].borrower, s_LoanListing[index].tokenId);
 
             emit LoanPaid(index, s_LoanListing[index].nftAddress, s_LoanListing[index].tokenId);
 
-            // Optimisation idea: If first m loans are paid start checkup from m.
         }
 
     }
