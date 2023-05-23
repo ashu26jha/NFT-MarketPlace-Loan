@@ -5,6 +5,9 @@
 - Fixed minting fee required to mint an NFT
 - `_beforeTokenTransfer` hooks are used to update floor price. Floor price won't change if amount = 0. TRY THIS ⭐️
 
+RobotNFT 0xBCeD1ec38AF871a25c1a61e0CEcBcd5EdE9fCc2e
+CatNFT 0x4F7B775Fc2AC08EdC94C1d5F3c491A28a169Ce8f
+MarketPlace 0x24fBFe37bB14E728E7326c900044b1f4D0E1D9FC
 
 ### NFT MarketPlace Structure
 - Could list on marketplace (Only Owner)
