@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.8;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
@@ -8,10 +8,14 @@ error RobotNft__NotEnoughETH();
 error RobotNft__DoesNotExist();
 error RobotNft__AlreadyMinted();
 
-contract Robot is ERC721, ERC721URIStorage {
-
+contract RobotNft is ERC721, ERC721URIStorage {
 
     uint256 private immutable i_mintFee;
+
+    event mintedRobotEvent (
+        address indexed minter,
+        uint256 indexed tokenId
+    );
 
     constructor(uint256 _mintFee) ERC721("Robot", "RBT") {
         i_mintFee = _mintFee;
@@ -30,7 +34,7 @@ contract Robot is ERC721, ERC721URIStorage {
         "bafkreigd6oulrbbdwyfn7wrjusfrid4dktbqd3cpgngmi5eopkbxvwhgnu"
     ];
 
-    function safeMint(address to, uint256 tokenId) public payable {
+    function safeMint(uint256 tokenId) public payable {
 
         if (msg.value < i_mintFee){
             revert RobotNft__NotEnoughETH();
@@ -42,9 +46,10 @@ contract Robot is ERC721, ERC721URIStorage {
             revert RobotNft__AlreadyMinted();
         }
 
-        _safeMint(to, tokenId);
+        _safeMint(msg.sender, tokenId);
         _setTokenURI(tokenId, tokenURIs[tokenId]);
-        minted[tokenId] = true;
+        minted[tokenId] = 1;
+        emit mintedRobotEvent(msg.sender,tokenId);
     }
 
     function mintStatus(uint256 tokenId) public view returns(uint8){

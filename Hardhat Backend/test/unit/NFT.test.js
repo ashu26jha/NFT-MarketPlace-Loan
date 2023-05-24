@@ -24,23 +24,23 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
         const tokenID = 2;
 
         it("Does not mint NFT if not enough eth is send", async function (){
-            await expect ( RobotNftContract.mintNFT(tokenID)).to.be.revertedWith("RobotNft__NotEnoughETH");
+            await expect ( RobotNftContract.safeMint(tokenID)).to.be.revertedWith("RobotNft__NotEnoughETH");
         })
 
         it("Does not mint NFT if tokenID is greater than 7 ", async function (){
-            await expect ( RobotNftContract.mintNFT(8,{value: RobotNftMintPrice}) ).to.be.revertedWith("RobotNft__DoesNotExist");
+            await expect ( RobotNftContract.safeMint(8,{value: RobotNftMintPrice}) ).to.be.revertedWith("RobotNft__DoesNotExist");
         })
 
         it("Does not allow to remint an NFT", async function(){
-            const txReceipt = await RobotNftContract.mintNFT(tokenID,{value: RobotNftMintPrice});
+            const txReceipt = await RobotNftContract.safeMint(tokenID,{value: RobotNftMintPrice});
             txReceipt.wait(1);
-            await expect (RobotNftContract.mintNFT(tokenID, {value : RobotNftMintPrice})).to.be.revertedWith("RobotNft__AlreadyMinted");
+            await expect (RobotNftContract.safeMint(tokenID, {value : RobotNftMintPrice})).to.be.revertedWith("RobotNft__AlreadyMinted");
             
             // Checks the mint status
             const mintStatus = await RobotNftContract.mintStatus(2);
             assert.equal(1,mintStatus);
             
-            const tokenURI1 = await RobotNftContract.getTokenURI(tokenID)
+            const tokenURI1 = await RobotNftContract.tokenURI(tokenID)
             assert.equal("bafkreihrq3flvy2gh6rzxzn43gxmtvir2iuhqgszfhtg2g2top2iid543i",tokenURI1);
         })
 
@@ -50,23 +50,23 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
         const tokenID = 2;
 
         it("Does not mint NFT if not enough eth is send", async function (){
-            await expect ( CatNftContract.mintNFT(tokenID)).to.be.revertedWith("CatNft__NotEnoughETH");
+            await expect ( CatNftContract.safeMint(tokenID)).to.be.revertedWith("CatNft__NotEnoughETH");
         })
 
         it("Does not mint NFT if tokenID is greater than 7 ", async function (){
-            await expect ( CatNftContract.mintNFT(8,{value: CatNftMintPrice}) ).to.be.revertedWith("CatNft__DoesNotExist");
+            await expect ( CatNftContract.safeMint(8,{value: CatNftMintPrice}) ).to.be.revertedWith("CatNft__DoesNotExist");
         })
 
         it("Does not allow to remint an NFT", async function(){
-            const txReceipt = await CatNftContract.mintNFT(tokenID,{value: CatNftMintPrice});
+            const txReceipt = await CatNftContract.safeMint(tokenID,{value: CatNftMintPrice});
             txReceipt.wait(1);
-            await expect (CatNftContract.mintNFT(tokenID, {value : CatNftMintPrice})).to.be.revertedWith("CatNft__AlreadyMinted");
+            await expect (CatNftContract.safeMint(tokenID, {value : CatNftMintPrice})).to.be.revertedWith("CatNft__AlreadyMinted");
             
             // Checks the mint status
             const mintStatus = await CatNftContract.mintStatus(2);
             assert.equal(1,mintStatus);
 
-            const tokenURI1 = await CatNftContract.getTokenURI(tokenID)
+            const tokenURI1 = await CatNftContract.tokenURI(tokenID)
             assert.equal("bafkreibmycdy5eklvwtwbls4kzwdhpul2xzivldtohptffj5owxwego62m",tokenURI1);
         })
 
@@ -77,13 +77,13 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
     describe("NFT Marketplace loan tests", async function (){
 
         it("Only allows owner of NFT to list it", async function(){
-            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.safeMint(2,{value: RobotNftMintPrice});
             await RobotNftContract.approve(NftMarketPlaceContract.address,2);
             await expect (NftMarketPlaceContract.connect(account2).ListLoan(RobotNftContract.address,2,2,2)).to.be.revertedWith("NotOwner()")
         });
         
         it("Checks for event emiited after listing", async function (){
-            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.safeMint(2,{value: RobotNftMintPrice});
             await RobotNftContract.approve(NftMarketPlaceContract.address,2);
             await NftMarketPlaceContract.ListLoan(RobotNftContract.address,2,2,2);
             const getLoanDetails = await NftMarketPlaceContract.getLoanDetails(0);
@@ -96,7 +96,7 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
 
         it("Reverts if lender sends less amount", async function (){
             // Borrower listing:
-            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.safeMint(2,{value: RobotNftMintPrice});
             await RobotNftContract.approve(NftMarketPlaceContract.address,2);
             await NftMarketPlaceContract.ListLoan(RobotNftContract.address,2,2,2);
             // Trying to send less value than needed
@@ -105,7 +105,7 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
 
         it("Finalise the deal",async function (){
             // Needs to check whether owner of the nft is the contract or not
-            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.safeMint(2,{value: RobotNftMintPrice});
             await RobotNftContract.approve(NftMarketPlaceContract.address,2);
             await NftMarketPlaceContract.ListLoan(RobotNftContract.address,2,2,2);
             await NftMarketPlaceContract.connect(account2).lenderDeal(0,3,{value: 2})
@@ -118,7 +118,7 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
         });
 
         it("Repayment in three installments", async function(){
-            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.safeMint(2,{value: RobotNftMintPrice});
             await RobotNftContract.approve(NftMarketPlaceContract.address,2);
             await NftMarketPlaceContract.ListLoan(RobotNftContract.address,2,2,"20000000000000000000");
             await NftMarketPlaceContract.connect(account2).lenderDeal(0,3,{value: 2});
@@ -133,7 +133,7 @@ const { developmentChains, RobotNftMintPrice, CatNftMintPrice } = require("../..
         });
 
         it("Fails to repay in time and NFT is confiscated", async function(){
-            await RobotNftContract.mintNFT(2,{value: RobotNftMintPrice});
+            await RobotNftContract.safeMint(2,{value: RobotNftMintPrice});
             await RobotNftContract.approve(NftMarketPlaceContract.address,2);
             await NftMarketPlaceContract.ListLoan(RobotNftContract.address,2,2,"2");
             await NftMarketPlaceContract.connect(account2).lenderDeal(0,3,{value: 2});
