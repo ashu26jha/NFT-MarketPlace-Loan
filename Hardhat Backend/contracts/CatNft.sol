@@ -1,10 +1,8 @@
-//SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.9;
 
-// Robot/AI NFT implementation 
-
-// OpenZeppelin Files
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 // Error reverts
 error CatNft__NotEnoughETH();
@@ -47,7 +45,8 @@ contract CatNft is ERC721{
             revert CatNft__AlreadyMinted();
         }
 
-        _safeMint(msg.sender,tokenId);
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, tokenURIs[tokenId]);
         minted[tokenId] = true;
     }
 

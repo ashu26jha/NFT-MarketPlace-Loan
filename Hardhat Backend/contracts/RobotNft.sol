@@ -1,22 +1,24 @@
-//SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.9;
 
-// Robot/AI NFT implementation 
-
-// OpenZeppelin Files
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
-// Error reverts
 error RobotNft__NotEnoughETH();
 error RobotNft__DoesNotExist();
 error RobotNft__AlreadyMinted();
 
-contract RobotNft is ERC721{
-    
-    // Immutable variables
+contract Robot is ERC721, ERC721URIStorage {
+
+
     uint256 private immutable i_mintFee;
-    
-    // List of token URIs
+
+    constructor(uint256 _mintFee) ERC721("Robot", "RBT") {
+        i_mintFee = _mintFee;
+    }
+
+    mapping(uint256 => uint8) minted;
+
     string [] private tokenURIs = [
         "bafkreid4u3zcjdnnognsqfq2n5xzbub4ear4pxvadpjyvcfamkyn7xnh5y",
         "bafkreibho65hloym3fwcvdgluzgnxznhqb6kjbxd444oocuk7dtalf2p5a",
@@ -27,16 +29,9 @@ contract RobotNft is ERC721{
         "bafkreiget4ew6h4ligxw7xn6undimoj5t6vq3nuo34smmznrekitxa7rte",
         "bafkreigd6oulrbbdwyfn7wrjusfrid4dktbqd3cpgngmi5eopkbxvwhgnu"
     ];
-    
-    // Mapping of minted NFTs
-    // TokenID => Boolean (Minted or not)
-    mapping(uint256 => uint8) minted;
 
-    constructor(uint256 _mintFee) ERC721("Robot","RBT"){
-        i_mintFee = _mintFee;
-    }
-    
-    function mintNFT(uint256 tokenId) payable external{
+    function safeMint(address to, uint256 tokenId) public payable {
+
         if (msg.value < i_mintFee){
             revert RobotNft__NotEnoughETH();
         }
@@ -47,17 +42,28 @@ contract RobotNft is ERC721{
             revert RobotNft__AlreadyMinted();
         }
 
-        _safeMint(msg.sender,tokenId);
-        minted[tokenId] = 1;
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, tokenURIs[tokenId]);
+        minted[tokenId] = true;
     }
 
-    // MintStatus
     function mintStatus(uint256 tokenId) public view returns(uint8){
         return minted[tokenId];
     }
 
-    function getTokenURI(uint256 tokenId)public view returns(string memory){
-        return tokenURIs[tokenId];
+    // The following functions are overrides required by Solidity.
+
+    function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
+        super._burn(tokenId);
+    }
+
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override(ERC721, ERC721URIStorage)
+        returns (string memory)
+    {
+        return super.tokenURI(tokenId);
     }
 
 }
